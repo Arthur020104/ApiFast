@@ -26,7 +26,7 @@ class MessageUpdate(BaseModel):
     conversation_id: Optional[int]
 
 
-DATABASE_URL = "mysql+mysqlconnector://Arthur:pass@localhost/Historico"
+DATABASE_URL = "url"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 messages_table = sqlalchemy.Table(
