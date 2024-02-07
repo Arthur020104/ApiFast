@@ -7,7 +7,22 @@ from datetime import datetime
 from typing import Optional
 from fastapi import HTTPException
 
-
+#Db tables
+""""
+USE Historico;
+CREATE TABLE conversations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT
+);
+CREATE TABLE messages (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    text TEXT,
+    is_user BOOLEAN,
+    datetime DATETIME DEFAULT CURRENT_TIMESTAMP,  -- Add datetime column with default value
+    conversation_id INTEGER,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
+"""
 
 class Message(BaseModel):
     text: str
@@ -26,7 +41,7 @@ class MessageUpdate(BaseModel):
     conversation_id: Optional[int]
 
 
-DATABASE_URL = "url"
+DATABASE_URL = "URL"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 messages_table = sqlalchemy.Table(
