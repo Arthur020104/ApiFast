@@ -1,13 +1,12 @@
 import uvicorn
-from typing import List
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 import databases
 import sqlalchemy
 from datetime import datetime 
-from typing import Optional
 from fastapi import HTTPException
-
+from message import Message, MessageUpdate
+from user import Usuario, UsuarioUpdate
+from conversation import Conversation
 #Db tables
 """"
 
@@ -34,31 +33,10 @@ CREATE TABLE messages (
 
 
 """
-class Usuario(BaseModel):
-    id:int
-    name: str
-    number_tel:str
-class UsuarioUpdate(BaseModel):
-    name: Optional[str]
-    number_tel:Optional[str]
-class Message(BaseModel):
-    text: str
-    is_user: bool 
-    datetime: datetime
-    conversation_id: int
-
-class Conversation(BaseModel):
-    user_id: int
-    messages: List[Message] = []
-    
-class MessageUpdate(BaseModel):
-    text: Optional[str]
-    is_user: Optional[bool]
-    datetime: Optional[datetime]
-    conversation_id: Optional[int]
 
 
-DATABASE_URL = "url"
+
+DATABASE_URL = "URL"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 users_table = sqlalchemy.Table(
