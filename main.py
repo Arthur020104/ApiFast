@@ -1,3 +1,4 @@
+import uvicorn
 from typing import List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -9,7 +10,14 @@ from fastapi import HTTPException
 
 #Db tables
 """"
+
 USE Historico;
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    number_tel VARCHAR(20) NOT NULL
+);
+
 CREATE TABLE conversations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT
@@ -22,8 +30,17 @@ CREATE TABLE messages (
     conversation_id INTEGER,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id)
 );
-"""
 
+
+
+"""
+class Usuario(BaseModel):
+    id:int
+    name: str
+    number_tel:str
+class UsuarioUpdate(BaseModel):
+    name: Optional[str]
+    number_tel:Optional[str]
 class Message(BaseModel):
     text: str
     is_user: bool 
@@ -41,16 +58,23 @@ class MessageUpdate(BaseModel):
     conversation_id: Optional[int]
 
 
-DATABASE_URL = "URL"
+DATABASE_URL = "url"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
+users_table = sqlalchemy.Table(
+    "users",
+    metadata,
+    sqlalchemy.Column("id",sqlalchemy.Integer, primary_key=True,autoincrement=True),
+    sqlalchemy.Column("name",sqlalchemy.Integer),
+    sqlalchemy.Column("number_tel",sqlalchemy.String),
+)
 messages_table = sqlalchemy.Table(
     "messages",
     metadata,
     sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True, autoincrement=True),
     sqlalchemy.Column("text", sqlalchemy.String),
-    sqlalchemy.Column("is_user", sqlalchemy.Boolean),  # Change to Boolean for better representation
-    sqlalchemy.Column("datetime", sqlalchemy.DateTime, default=datetime.utcnow),  # Add datetime column
+    sqlalchemy.Column("is_user", sqlalchemy.Boolean), 
+    sqlalchemy.Column("datetime", sqlalchemy.DateTime, default=datetime.utcnow),
     sqlalchemy.Column("conversation_id", sqlalchemy.Integer, sqlalchemy.ForeignKey("conversations.id")),
 )
 
@@ -125,7 +149,7 @@ async def update_message(message_id: int, updated_data: MessageUpdate):
         raise HTTPException(status_code=404, detail="Message not found")
 
     # Update the message with the provided data
-    update_values = updated_data.dict(exclude_unset=True)
+    update_values = updated_data.model_dump(exclude_unset=True)
     await database.execute(
         messages_table.update().where(messages_table.c.id == message_id).values(**update_values)
     )
@@ -155,10 +179,68 @@ async def create_conversation(conversation_data: Conversation):
 
     return {"conversation_id": conversation_id, "messages": [], "status": {"code": 201, "text": "Conversation created successfully"}}
 
+@app.delete("/delete_conversation/{conversation_id}")
+async def delete_conversation(conversation_id: int):
+    # Check if the conversation exists
+    existing_conversation = await database.fetch_one(
+        conversations_table.select().where(conversations_table.c.id == conversation_id)
+    )
+    
+    if not existing_conversation:
+        raise HTTPException(status_code=404, detail=f"Conversation with ID {conversation_id} not found")
 
+    # Delete the conversation and its associated messages from the database
+    await database.execute(messages_table.delete().where(messages_table.c.conversation_id == conversation_id))
+    await database.execute(conversations_table.delete().where(conversations_table.c.id == conversation_id))
+
+    return {"conversation_id": conversation_id, "status": {"code": 200, "text": "Conversation deleted successfully"}}
+
+@app.post("/create_usuario")
+async def create_usuario(usuario_data: Usuario):
+    query = users_table.insert().values(
+        id=usuario_data.id,
+        name=usuario_data.name,
+        number_tel=usuario_data.number_tel,
+    )
+    usuario_id = await database.execute(query)
+    return {"usuario_id": usuario_id, "status": {"code": 201, "text": "Usuario created successfully"}, **usuario_data.dict()}
+
+@app.get("/get_usuario/{usuario_id}")
+async def get_usuario(usuario_id: int):
+    usuario = await database.fetch_one(users_table.select().where(users_table.c.id == usuario_id))
+    
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario not found")
+
+    return {"usuario_id": usuario_id, **usuario}
+
+@app.put("/update_usuario/{usuario_id}")
+async def update_usuario(usuario_id: int, updated_data: UsuarioUpdate):
+    usuario = await database.fetch_one(users_table.select().where(users_table.c.id == usuario_id))
+    
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario not found")
+
+    update_values = updated_data.dict(exclude_unset=True)
+    await database.execute(
+        users_table.update().where(users_table.c.id == usuario_id).values(**update_values)
+    )
+
+    updated_usuario = await database.fetch_one(users_table.select().where(users_table.c.id == usuario_id))
+    
+    return {"usuario_id": usuario_id, "updated_usuario": updated_usuario, "status": {"code": 200, "text": "Usuario updated successfully"}}
+
+
+@app.delete("/delete_usuario/{usuario_id}")
+async def delete_usuario(usuario_id: int):
+    usuario = await database.fetch_one(users_table.select().where(users_table.c.id == usuario_id))
+    
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario not found")
+
+    await database.execute(users_table.delete().where(users_table.c.id == usuario_id))
+    
+    return {"usuario_id": usuario_id, "status": {"code": 200, "text": "Usuario deleted successfully"}}
 
 if __name__ == "__main__":
-    import uvicorn
-
-    # Use uvicorn to run the FastAPI app
     uvicorn.run(app, host="127.0.0.1", port=8000)
