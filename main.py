@@ -36,7 +36,7 @@ CREATE TABLE messages (
 
 
 
-DATABASE_URL = "URL"
+DATABASE_URL = "URL_DATABASE"
 database = databases.Database(DATABASE_URL)
 metadata = sqlalchemy.MetaData()
 users_table = sqlalchemy.Table(
@@ -176,7 +176,6 @@ async def delete_conversation(conversation_id: int):
 @app.post("/create_usuario")
 async def create_usuario(usuario_data: Usuario):
     query = users_table.insert().values(
-        id=usuario_data.id,
         name=usuario_data.name,
         number_tel=usuario_data.number_tel,
     )
@@ -190,7 +189,7 @@ async def get_usuario(usuario_id: int):
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario not found")
 
-    return {"usuario_id": usuario_id, **usuario}
+    return { "status": {"code": 200, "text": "Usuario retrieved successfully"}, "usuario_id": usuario_id, **usuario}
 
 @app.put("/update_usuario/{usuario_id}")
 async def update_usuario(usuario_id: int, updated_data: UsuarioUpdate):
